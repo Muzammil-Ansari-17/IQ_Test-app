@@ -11,7 +11,7 @@ public class LoginFrame extends JFrame {
 
     public LoginFrame() {
         setTitle("IQ Test - Login");
-        setSize(450, 600);
+        setSize(500, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setLayout(new BorderLayout());
