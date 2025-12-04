@@ -12,7 +12,6 @@ public class DBConnection {
     private static final String PASSWORD = "FF44GG55";
 
     public static Connection getConnection() {
-
         try {
             return DriverManager.getConnection(URL, USER, PASSWORD);
         } catch (SQLException e) {
