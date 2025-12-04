@@ -140,7 +140,7 @@ public class LoginFrame extends JFrame {
         add(mainPanel, BorderLayout.CENTER);
 
         // Credits label at the bottom - Shows creator names
-        JLabel creditsLabel = new JLabel("<html><center>Created By<br>Muzammil(154),Sohaib(),Ahmed(170),Ibrahim(185)</center></html>", SwingConstants.CENTER);
+        JLabel creditsLabel = new JLabel("<html><center>Created By<br>Muzammil(154),Sohaib(192),Ahmed(170),Ibrahim(185)</center></html>", SwingConstants.CENTER);
         creditsLabel.setFont(new Font("Inter", Font.PLAIN, 11));
         creditsLabel.setForeground(new Color(0, 0, 0));  // Black
         creditsLabel.setBorder(BorderFactory.createEmptyBorder(10, 10, 15, 10));
