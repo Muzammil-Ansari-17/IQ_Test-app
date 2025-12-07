@@ -37,17 +37,19 @@ public class ResultsFrame extends JFrame {
         mainPanel.setBorder(BorderFactory.createEmptyBorder(30, 40, 30, 40));
 
         // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        JPanel headerPanel = new JPanel(new BorderLayout(0, 20));
         headerPanel.setOpaque(false);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0));
 
         JLabel titleLabel = new JLabel("Detailed Results", SwingConstants.CENTER);
         titleLabel.setFont(new Font("Inter", Font.BOLD, 32));
         titleLabel.setForeground(new Color(248, 250, 252));
 
-        headerPanel.add(titleLabel, BorderLayout.CENTER);
-
         // Stats Panel
         JPanel statsPanel = createStatsPanel();
+
+        headerPanel.add(titleLabel, BorderLayout.NORTH);
+        headerPanel.add(statsPanel, BorderLayout.CENTER);
 
         // Table Panel
         JPanel tablePanel = new JPanel(new BorderLayout());
@@ -77,6 +79,7 @@ public class ResultsFrame extends JFrame {
         // Bottom buttons
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 15, 0));
         buttonPanel.setOpaque(false);
+        buttonPanel.setBorder(BorderFactory.createEmptyBorder(20, 0, 0, 0));
 
         JButton closeButton = new JButton("Close");
         styleButton(closeButton, new Color(51, 65, 85), new Color(71, 85, 105));
@@ -85,8 +88,8 @@ public class ResultsFrame extends JFrame {
         buttonPanel.add(closeButton);
 
         mainPanel.add(headerPanel, BorderLayout.NORTH);
-        mainPanel.add(statsPanel, BorderLayout.CENTER);
-        mainPanel.add(tablePanel, BorderLayout.SOUTH);
+        mainPanel.add(tablePanel, BorderLayout.CENTER);
+        mainPanel.add(buttonPanel, BorderLayout.SOUTH);
 
         add(mainPanel);
         setVisible(true);
@@ -142,7 +145,8 @@ public class ResultsFrame extends JFrame {
         };
         card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
         card.setOpaque(false);
-        card.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+        card.setBorder(BorderFactory.createEmptyBorder(25, 20, 25, 20));
+        card.setPreferredSize(new Dimension(200, 120));
 
         JLabel valueLabel = new JLabel(value, SwingConstants.CENTER);
         valueLabel.setFont(new Font("Inter", Font.BOLD, 36));
@@ -162,30 +166,60 @@ public class ResultsFrame extends JFrame {
     }
 
     private void styleTable(JTable table) {
-        table.setFont(new Font("Inter", Font.PLAIN, 13));
+        table.setFont(new Font("Inter", Font.PLAIN, 14));
         table.setForeground(new Color(203, 213, 225));
         table.setBackground(new Color(30, 41, 59));
-        table.setRowHeight(40);
-        table.setShowGrid(false);
-        table.setIntercellSpacing(new Dimension(0, 0));
+        table.setRowHeight(45);
+        table.setShowGrid(true);
+        table.setGridColor(new Color(51, 65, 85));
+        table.setIntercellSpacing(new Dimension(1, 1));
         table.setSelectionBackground(new Color(51, 65, 85));
         table.setSelectionForeground(new Color(248, 250, 252));
 
         JTableHeader header = table.getTableHeader();
-        header.setFont(new Font("Inter", Font.BOLD, 13));
-        header.setForeground(new Color(148, 163, 184));
+        header.setFont(new Font("Inter", Font.BOLD, 14));
+        header.setForeground(new Color(226, 232, 240));
         header.setBackground(new Color(15, 23, 42));
-        header.setPreferredSize(new Dimension(header.getWidth(), 45));
-        header.setBorder(BorderFactory.createMatteBorder(0, 0, 1, 0, new Color(51, 65, 85)));
+        header.setPreferredSize(new Dimension(header.getWidth(), 50));
+        header.setBorder(BorderFactory.createMatteBorder(0, 0, 2, 0, new Color(59, 130, 246)));
+        header.setReorderingAllowed(false);
 
-        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-        centerRenderer.setHorizontalAlignment(JLabel.CENTER);
-        centerRenderer.setBackground(new Color(30, 41, 59));
-        centerRenderer.setForeground(new Color(203, 213, 225));
+        DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer() {
+            @Override
+            public Component getTableCellRendererComponent(JTable table, Object value,
+                                                           boolean isSelected, boolean hasFocus, int row, int column) {
+                Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
+                setHorizontalAlignment(JLabel.CENTER);
+
+                if (!isSelected) {
+                    setBackground(new Color(30, 41, 59));
+                    setForeground(new Color(203, 213, 225));
+                }
+
+                // Color code the result column
+                if (column == 3 && value != null) {
+                    if (value.toString().equals("✓")) {
+                        setForeground(new Color(34, 197, 94));
+                        setFont(new Font("Inter", Font.BOLD, 16));
+                    } else if (value.toString().equals("✗")) {
+                        setForeground(new Color(239, 68, 68));
+                        setFont(new Font("Inter", Font.BOLD, 16));
+                    }
+                }
+
+                return c;
+            }
+        };
 
         for (int i = 0; i < table.getColumnCount(); i++) {
             table.getColumnModel().getColumn(i).setCellRenderer(centerRenderer);
         }
+
+        // Set column widths
+        table.getColumnModel().getColumn(0).setPreferredWidth(100);
+        table.getColumnModel().getColumn(1).setPreferredWidth(120);
+        table.getColumnModel().getColumn(2).setPreferredWidth(140);
+        table.getColumnModel().getColumn(3).setPreferredWidth(100);
     }
 
     private void loadResults(DefaultTableModel model) {
@@ -201,13 +235,8 @@ public class ResultsFrame extends JFrame {
 
             int qNum = 1;
             while (rs.next()) {
-                String questionText = rs.getString("question_text");
-                if (questionText.length() > 50) {
-                    questionText = questionText.substring(0, 47) + "...";
-                }
-
                 String chosen = rs.getString("chosen_option");
-                String correct = rs.getString("correct_option");
+                int correct = rs.getInt("correct_option");
                 boolean isCorrect = rs.getBoolean("is_correct");
 
                 model.addRow(new Object[]{
