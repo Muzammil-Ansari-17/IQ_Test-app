@@ -290,8 +290,6 @@ public class IQTestFrame extends JFrame {
                 }
 
                 updateUI();
-            } else {
-                showCompletionDialog();
             }
             rs.close();
             ps.close();
@@ -314,10 +312,17 @@ public class IQTestFrame extends JFrame {
 
             boolean isCorrect = false;
             if (rs.next()) {
-                String correctOption = rs.getString("correct_option");
-                isCorrect = selectedOption.equalsIgnoreCase(correctOption);
+                int correctOption = rs.getInt("correct_option");
+                // Convert letter to number: A=1, B=2, C=3, D=4
+                int selectedNumber = convertLetterToNumber(selectedOption);
+
+                System.out.println("Question " + currentQuestion + ": Selected=" + selectedOption + "(" + selectedNumber + "), Correct=" + correctOption);
+                isCorrect = (selectedNumber == correctOption);
                 if (isCorrect) {
                     score++;
+                    System.out.println("Correct! Score is now: " + score);
+                } else {
+                    System.out.println("Incorrect!");
                 }
             }
 
@@ -337,16 +342,32 @@ public class IQTestFrame extends JFrame {
             conn.close();
 
             currentQuestion++;
-            loadQuestion(currentQuestion);
+
+            // Check if test is complete BEFORE loading next question
+            if (currentQuestion > totalQuestions) {
+                System.out.println("Test complete! Final score: " + score);
+                updateFinalScore();  // Update score in database
+                showCompletionDialog();
+            } else {
+                loadQuestion(currentQuestion);
+            }
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
     }
 
-    private void showCompletionDialog() {
-        updateFinalScore();
+    private int convertLetterToNumber(String letter) {
+        switch(letter.toUpperCase()) {
+            case "A": return 1;
+            case "B": return 2;
+            case "C": return 3;
+            case "D": return 4;
+            default: return 0;
+        }
+    }
 
+    private void showCompletionDialog() {
         JDialog dialog = new JDialog(this, "Test Completed!", true);
         dialog.setSize(550, 450);
         dialog.setLocationRelativeTo(this);
@@ -459,10 +480,12 @@ public class IQTestFrame extends JFrame {
             PreparedStatement ps = conn.prepareStatement("UPDATE results SET score = ? WHERE result_id = ?");
             ps.setInt(1, score);
             ps.setInt(2, resultId);
-            ps.executeUpdate();
+            int rowsUpdated = ps.executeUpdate();
+            System.out.println("Updating database: resultId=" + resultId + ", score=" + score + ", rows updated=" + rowsUpdated);
             ps.close();
             conn.close();
         } catch (SQLException e) {
+            System.out.println("Error updating final score:");
             e.printStackTrace();
         }
     }
