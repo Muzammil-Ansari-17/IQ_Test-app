@@ -105,7 +105,7 @@ public class RegisterFrame extends JFrame {
         JLabel fieldLabel = new JLabel(label);
         fieldLabel.setFont(new Font("Inter", Font.PLAIN, 14));
         fieldLabel.setForeground(new Color(203, 213, 225));
-        fieldLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
+        fieldLabel.setAlignmentX(Component.CENTER_ALIGNMENT);
 
         field.setMaximumSize(new Dimension(350, 45));
 
