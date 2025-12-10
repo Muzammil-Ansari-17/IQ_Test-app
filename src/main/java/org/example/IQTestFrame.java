@@ -8,6 +8,8 @@ import javax.swing.Timer;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import static java.lang.Thread.sleep;
+
 public class IQTestFrame extends JFrame {
     private JLabel questionLabel;
     private JButton[] optionButtons;
@@ -19,6 +21,13 @@ public class IQTestFrame extends JFrame {
     private int totalQuestions = 20;
     private int userId;
     private int resultId;
+
+    // Timer components
+    private Timer questionTimer;
+    private int timeRemaining;
+    private static final int TIME_PER_QUESTION = 30; // 30 seconds per question
+    private JLabel timerLabel;
+    private JProgressBar timerProgressBar;
 
     public IQTestFrame() {
         this(1); // Default test user for testing
@@ -70,18 +79,24 @@ public class IQTestFrame extends JFrame {
         titleLabel.setForeground(new Color(248, 250, 252));
 
         // Score and Question Number Panel
-        JPanel infoPanel = new JPanel(new GridLayout(1, 2, 30, 0));
+        JPanel infoPanel = new JPanel(new GridLayout(1, 3, 20, 0));
         infoPanel.setOpaque(false);
 
         questionNumberLabel = new JLabel("Question 1/" + totalQuestions, SwingConstants.LEFT);
         questionNumberLabel.setFont(new Font("Inter", Font.PLAIN, 16));
         questionNumberLabel.setForeground(new Color(148, 163, 184));
 
+        // Timer Label
+        timerLabel = new JLabel("⏱ " + TIME_PER_QUESTION + "s", SwingConstants.CENTER);
+        timerLabel.setFont(new Font("Inter", Font.BOLD, 18));
+        timerLabel.setForeground(new Color(34, 197, 94));
+
         scoreLabel = new JLabel("Score: 0", SwingConstants.RIGHT);
         scoreLabel.setFont(new Font("Inter", Font.BOLD, 16));
         scoreLabel.setForeground(new Color(34, 197, 94));
 
         infoPanel.add(questionNumberLabel);
+        infoPanel.add(timerLabel);
         infoPanel.add(scoreLabel);
 
         JPanel topContainer = new JPanel(new BorderLayout(0, 18));
@@ -89,7 +104,12 @@ public class IQTestFrame extends JFrame {
         topContainer.add(titleLabel, BorderLayout.NORTH);
         topContainer.add(infoPanel, BorderLayout.CENTER);
 
-        // Progress Bar
+        // Progress Bar Panel (contains both progress bars)
+        JPanel progressPanel = new JPanel(new GridLayout(2, 1, 0, 8));
+        progressPanel.setOpaque(false);
+        progressPanel.setBorder(BorderFactory.createEmptyBorder(12, 45, 0, 45));
+
+        // Question Progress Bar
         progressBar = new JProgressBar(0, totalQuestions);
         progressBar.setValue(1);
         progressBar.setStringPainted(false);
@@ -97,10 +117,21 @@ public class IQTestFrame extends JFrame {
         progressBar.setOpaque(false);
         progressBar.setBackground(new Color(51, 65, 85));
         progressBar.setForeground(new Color(59, 130, 246));
-        progressBar.setBorder(BorderFactory.createEmptyBorder(12, 45, 0, 45));
+
+        // Timer Progress Bar
+        timerProgressBar = new JProgressBar(0, TIME_PER_QUESTION);
+        timerProgressBar.setValue(TIME_PER_QUESTION);
+        timerProgressBar.setStringPainted(false);
+        timerProgressBar.setPreferredSize(new Dimension(0, 6));
+        timerProgressBar.setOpaque(false);
+        timerProgressBar.setBackground(new Color(51, 65, 85));
+        timerProgressBar.setForeground(new Color(34, 197, 94));
+
+        progressPanel.add(progressBar);
+        progressPanel.add(timerProgressBar);
 
         headerPanel.add(topContainer, BorderLayout.CENTER);
-        headerPanel.add(progressBar, BorderLayout.SOUTH);
+        headerPanel.add(progressPanel, BorderLayout.SOUTH);
 
         // Center Panel - Question
         JPanel centerPanel = new JPanel(new BorderLayout());
@@ -135,6 +166,7 @@ public class IQTestFrame extends JFrame {
             optionButtons[i] = createStyledButton("Option " + (i + 1), optionLabels[i]);
             String finalLabel = optionLabels[i];
             optionButtons[i].addActionListener(e -> {
+                stopTimer();
                 animateButtonClick(optionButtons[getOptionIndex(finalLabel)]);
                 checkAnswer(finalLabel);
             });
@@ -151,6 +183,90 @@ public class IQTestFrame extends JFrame {
         initializeTest();
         loadQuestion(currentQuestion);
         setVisible(true);
+    }
+
+    private void startTimer() {
+        timeRemaining = TIME_PER_QUESTION;
+        updateTimerDisplay();
+
+        if (questionTimer != null) {
+            questionTimer.stop();
+        }
+
+        questionTimer = new Timer(1000, e -> {
+            timeRemaining--;
+            updateTimerDisplay();
+
+            if (timeRemaining <= 0) {
+                stopTimer();
+                handleTimeout();
+            }
+        });
+        questionTimer.start();
+    }
+
+    private void stopTimer() {
+        if (questionTimer != null) {
+            questionTimer.stop();
+        }
+    }
+
+    private void updateTimerDisplay() {
+        timerLabel.setText("⏱ " + timeRemaining + "s");
+        timerProgressBar.setValue(timeRemaining);
+
+        // Change color based on remaining time
+        if (timeRemaining <= 5) {
+            timerLabel.setForeground(new Color(239, 68, 68)); // Red
+            timerProgressBar.setForeground(new Color(239, 68, 68));
+        } else if (timeRemaining <= 10) {
+            timerLabel.setForeground(new Color(251, 146, 60)); // Orange
+            timerProgressBar.setForeground(new Color(251, 146, 60));
+        } else {
+            timerLabel.setForeground(new Color(34, 197, 94)); // Green
+            timerProgressBar.setForeground(new Color(34, 197, 94));
+        }
+    }
+
+    private void handleTimeout() {
+        // Disable all buttons
+        for (JButton button : optionButtons) {
+            button.setEnabled(false);
+        }
+
+        // Record the timeout as an incorrect answer
+        try {
+            PreparedStatement psAttempt = DBConnection.getConnection().prepareStatement(
+                    "INSERT INTO attempts(result_id, question_id, chosen_option, is_correct) VALUES (?, ?, ?, ?)"
+            );
+            psAttempt.setInt(1, resultId);
+            psAttempt.setInt(2, currentQuestion);
+            psAttempt.setString(3, "TIMEOUT");
+            psAttempt.setBoolean(4, false);
+            psAttempt.executeUpdate();
+            psAttempt.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        // Show timeout message briefly
+        Timer delayTimer = new Timer(500, e -> {
+            currentQuestion++;
+
+            // Re-enable buttons
+            for (JButton button : optionButtons) {
+                button.setEnabled(true);
+            }
+
+            if (currentQuestion > totalQuestions) {
+                updateFinalScore();
+                showCompletionDialog();
+            } else {
+                loadQuestion(currentQuestion);
+            }
+        });
+        delayTimer.setRepeats(false);
+        delayTimer.start();
     }
 
     private int getOptionIndex(String label) {
@@ -290,6 +406,7 @@ public class IQTestFrame extends JFrame {
                 }
 
                 updateUI();
+                startTimer(); // Start timer when question is loaded
             }
             rs.close();
             ps.close();
